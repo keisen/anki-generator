@@ -1,0 +1,14 @@
+<div class="definitions">
+  <% Object.keys(definitions).forEach(function(partOfSpeech) { %>
+  <div class="partOfDefinitions">
+    <% if (partOfSpeech == 'null') { %>
+      <label><%= 'any part of speech' %></label>
+    <% } else { %>
+      <label><%= partOfSpeech %></label>
+    <% } %>
+    <ol>
+      <%= definitions[partOfSpeech] %>
+    </ol>
+  </div>
+  <% }); %>
+</div>

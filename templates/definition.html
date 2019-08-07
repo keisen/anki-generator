@@ -1,0 +1,25 @@
+<li class='definition'>
+  <%= definition %>
+  <!-- Synonyms -->
+  <% if (!!synonyms) { %>
+  <div class='synonyms'>
+    <label>SYM:</label>
+    <span><%= synonyms.join(', ') %></span>
+  </div>
+  <% } %>
+  <!-- Antonyms -->
+  <% if (!!antonyms) { %>
+  <div class='antonyms'>
+    <label>OPP:</label>
+    <span><%= antonyms.join(', ') %></span>
+  </div>
+  <% } %>
+  <!-- Examples -->
+  <% if (!!examples) { %>
+  <ul class='examples'>
+  <% examples.forEach(function(e) { %>
+    <li><%= e %></li>
+  <% }); %>
+  </ul>
+  <% } %>
+</li>

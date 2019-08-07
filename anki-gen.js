@@ -23,6 +23,7 @@ const definitionTemplate = _.template(fs.readFileSync('./templates/definition.ht
 const examplesTemplate = _.template(fs.readFileSync('./templates/examples.html', 'utf8'));
 
 let apiCallCount = 0;
+
 const getWord = function(word, callback, ...args) {
   setTimeout(function(word, callback, ...args) {
     unirest("GET", "https://wordsapiv1.p.rapidapi.com/words/" + word)
@@ -34,7 +35,7 @@ const getWord = function(word, callback, ...args) {
   }, apiCallCount++ * 1000, word, callback, ...args);
 };
 
-const getExamples = function(word, callback, ...args) {
+const getExample = function(word, callback, ...args) {
   setTimeout(function(word, callback, ...args) {
     unirest("GET", "https://twinword-word-graph-dictionary.p.rapidapi.com/example/?entry=" + word)
     .header("x-rapidapi-host", "twinword-word-graph-dictionary.p.rapidapi.com")
@@ -45,7 +46,7 @@ const getExamples = function(word, callback, ...args) {
   }, apiCallCount++ * 1000, word, callback, ...args);
 };
 
-const loadWord = function(word, callback) {
+const lookUp = function(word, callback) {
   word = word.toLowerCase();
   let jsonPath = path.join(cacheDir, `${word}.json`);
   if (!!fs.existsSync(jsonPath)) {
@@ -61,18 +62,16 @@ const loadWord = function(word, callback) {
         wordData = result.body;
       } else {
         console.warn(`Getting data was failed! Word: \"${word}\", Limit: ${remaining}/${limit}, MSG: \"${result.body.result_msg}'\"`);
-        if (result.status == 404) {
-          console.log(`Create empty data. Word: \"${word}\"`);
-        } else {
+        if (result.status != 404) {
           console.error(result);
           throw result;
         }
       }
-      getExamples(word, function(result) {
+      getExample(word, function(result) {
         let remaining = result.headers['x-ratelimit-requests-remaining'];
         let limit = result.headers['x-ratelimit-requests-limit'];
         let extraExamples = [];
-        if (result.status == 200 && !!result.body.example && result.body.example.length > 0) {
+        if (result.status == 200 && !!result.body && !!result.body.example && result.body.example.length > 0) {
           console.log(`Getting examples was successed! Word: \"${word}\", Limit: ${remaining}/${limit}`);
           extraExamples = result.body.example;
         } else {
@@ -103,8 +102,9 @@ fs.createReadStream(path.join(process.cwd(), src)).pipe(
     let syllables = '';
     let pronunciation = '';
     let details = '';
+    let extraExamples = '';
     if (!!word && word.length > 0) {
-      loadWord(word, function(res) {
+      lookUp(word, function(res) {
         if (!!res.syllables && !!res.syllables.list) {
           syllables = res.syllables.list.join('-');
         }
@@ -123,17 +123,18 @@ fs.createReadStream(path.join(process.cwd(), src)).pipe(
                 antonyms: definition.antonyms,
                 examples: definition.examples,
               });
-            }).join('')
+            }).join('');
           });
           details = normalize(template({definitions: definitions}));
         }
-        outputs.push([ word, translated, syllables, pronunciation, details,
-                        normalize(examplesTemplate({examples: res.extraExamples})) ]);
+        if (!!res.extraExamples.length > 0) {
+          extraExamples = normalize(examplesTemplate({examples: res.extraExamples}));
+        }
+        outputs.push([ word, translated, syllables, pronunciation, details, extraExamples ]);
 			});
     } else {
       console.log(`No: ${index}, Word: \"${word}\", was skipped.`);
-      outputs.push([ word, translated, syllables, pronunciation,
-                     details, '' ]);
+      outputs.push([ word, translated, syllables, pronunciation, details, extraExamples ]);
     }
   });
   const finalize = function(data, outputs, dst) {
@@ -141,7 +142,7 @@ fs.createReadStream(path.join(process.cwd(), src)).pipe(
       if (data.length === outputs.length) {
         outputs = outputs.map(function(output) {
           return output.map(function(val) {
-            return val.replace(/\t?\r?\n/g, '');
+            return val.replace(/\t?\r?\n/g, '').trim();
           });
         });
         csv.stringify(outputs, {delimiter: '\t'}, function(error,output) {

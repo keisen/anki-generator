@@ -10,7 +10,7 @@ const API_KEY = process.env.RAPID_API_KEY;
 
 const src = process.argv[2];
 const dst = process.argv[3];
-const cacheDir = path.join(process.cwd(), 'cache');
+const cacheDir = path.join(__dirname, 'cache');
 
 console.info(`src: ${src}, dest: ${dst}, cacheDir: ${cacheDir}, workdir: ${process.cwd()}`);
 if (!fs.existsSync(cacheDir)) {
@@ -18,9 +18,10 @@ if (!fs.existsSync(cacheDir)) {
   console.log(`Cache directory was created! Path: \"${cacheDir}\"`);
 }
 
-const template = _.template(fs.readFileSync('./templates/template.html', 'utf8'));
-const definitionTemplate = _.template(fs.readFileSync('./templates/definition.html', 'utf8'));
-const examplesTemplate = _.template(fs.readFileSync('./templates/examples.html', 'utf8'));
+const templateDir = path.join(__dirname, 'templates');
+const cardTemplate = _.template(fs.readFileSync(path.join(templateDir, 'card.html'), 'utf8'));
+const definitionTemplate = _.template(fs.readFileSync(path.join(templateDir, 'definition.html'), 'utf8'));
+const corpusTemplate = _.template(fs.readFileSync(path.join(templateDir, 'corpus.html'), 'utf8'));
 
 let apiCallCount = 0;
 
@@ -85,6 +86,23 @@ const lookUp = function(word, callback) {
   }
 };
 
+const finalize = function(data, outputs) {
+  setTimeout(function(data, outputs) {
+    if (data.length === outputs.length) {
+      outputs = outputs.map(function(output) {
+        return output.map(function(val) {
+          return val.replace(/\t?\r?\n/g, '').trim();
+        });
+      });
+      csv.stringify(outputs, {delimiter: '\t'}, function(error,output) {
+        fs.writeFileSync(path.join(process.cwd(), dst), output);
+      });
+    } else {
+      finalize(data, outputs);
+    }
+  }, 1000, data, outputs);
+};
+
 fs.createReadStream(path.join(process.cwd(), src)).pipe(
   csv.parse({delimiter: '\t', relax_column_count: true}, function(err, data) {
   if (!!err) {
@@ -125,10 +143,10 @@ fs.createReadStream(path.join(process.cwd(), src)).pipe(
               });
             }).join('');
           });
-          details = normalize(template({definitions: definitions}));
+          details = normalize(cardTemplate({definitions: definitions}));
         }
         if (!!res.extraExamples.length > 0) {
-          extraExamples = normalize(examplesTemplate({examples: res.extraExamples}));
+          extraExamples = normalize(corpusTemplate({examples: res.extraExamples}));
         }
         outputs.push([ word, translated, syllables, pronunciation, details, extraExamples ]);
 			});
@@ -137,22 +155,6 @@ fs.createReadStream(path.join(process.cwd(), src)).pipe(
       outputs.push([ word, translated, syllables, pronunciation, details, extraExamples ]);
     }
   });
-  const finalize = function(data, outputs, dst) {
-    setTimeout(function(data, outputs, dst) {
-      if (data.length === outputs.length) {
-        outputs = outputs.map(function(output) {
-          return output.map(function(val) {
-            return val.replace(/\t?\r?\n/g, '').trim();
-          });
-        });
-        csv.stringify(outputs, {delimiter: '\t'}, function(error,output) {
-          fs.writeFileSync(path.join(process.cwd(), dst), output);
-        });
-      } else {
-        finalize(data, outputs, dst);
-      }
-    }, 1000, data, outputs, dst);
-  };
-  finalize(data, outputs, dst);
+  finalize(data, outputs);
 }));
 

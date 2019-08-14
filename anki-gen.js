@@ -52,7 +52,12 @@ const lookUp = function(word, callback) {
   let jsonPath = path.join(cacheDir, `${word}.json`);
   if (!!fs.existsSync(jsonPath)) {
     console.log(`Cache data was found. Word: \"${word}\"`);
-    callback(JSON.parse(fs.readFileSync(jsonPath, 'utf8')));
+    res = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+    if (!res.extraExamples) {
+      res.extraExamples = [];
+      fs.writeFileSync(jsonPath, JSON.stringify(res));
+    }
+    callback(res);
   } else {
     getWord(word, function(result) {
       let remaining = result.headers['x-ratelimit-requests-remaining'];

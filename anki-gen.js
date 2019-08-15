@@ -5,6 +5,7 @@ const unirest = require('unirest');
 const iconv = require('iconv');
 const _ = require('underscore');
 const normalize = require("normalize-html-whitespace");
+const getTranslate = require('./lib/getTranslate.js');
 
 const API_KEY = process.env.RAPID_API_KEY;
 
@@ -153,7 +154,18 @@ fs.createReadStream(path.join(process.cwd(), src)).pipe(
         if (!!res.extraExamples.length > 0) {
           extraExamples = normalize(corpusTemplate({examples: res.extraExamples}));
         }
-        outputs.push([ word, translated, syllables, pronunciation, details, extraExamples ]);
+        if (translated.length > 0) {
+          outputs.push([ word, translated, syllables, pronunciation, details, extraExamples ]);
+        } else {
+          getTranslate(word, function(r, err) {
+            outputs.push([ word, r, syllables, pronunciation, details, extraExamples ]);
+            if (!err && r.length > 0) {
+              console.log(`Getting translated was successed! Word: \"${word}\"`);
+            } else {
+              console.warn(`Getting translated was failed! Word: \"${word}\"`);
+            }
+          });
+        }
 			});
     } else {
       console.log(`No: ${index}, Word: \"${word}\", was skipped.`);
@@ -162,4 +174,5 @@ fs.createReadStream(path.join(process.cwd(), src)).pipe(
   });
   finalize(data, outputs);
 }));
+
 

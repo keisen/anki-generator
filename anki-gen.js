@@ -1,13 +1,12 @@
 const path = require('path');
 const fs = require('fs');
 const csv = require('csv');
-const unirest = require('unirest');
 const iconv = require('iconv');
 const _ = require('underscore');
 const normalize = require("normalize-html-whitespace");
-const getTranslate = require('./lib/getTranslate.js');
-
-const API_KEY = process.env.RAPID_API_KEY;
+const weblio = require('./lib/scraping.js').weblio;
+const getWord = require('./lib/webapi.js').word;
+const getExample = require('./lib/webapi.js').examples;
 
 const src = process.argv[2];
 const dst = process.argv[3];
@@ -23,30 +22,6 @@ const templateDir = path.join(__dirname, 'templates');
 const cardTemplate = _.template(fs.readFileSync(path.join(templateDir, 'card.html'), 'utf8'));
 const definitionTemplate = _.template(fs.readFileSync(path.join(templateDir, 'definition.html'), 'utf8'));
 const corpusTemplate = _.template(fs.readFileSync(path.join(templateDir, 'corpus.html'), 'utf8'));
-
-let apiCallCount = 0;
-
-const getWord = function(word, callback, ...args) {
-  setTimeout(function(word, callback, ...args) {
-    unirest("GET", "https://wordsapiv1.p.rapidapi.com/words/" + word)
-    .header("x-rapidapi-host", "wordsapiv1.p.rapidapi.com")
-    .header("x-rapidapi-key", API_KEY)
-    .end(function(result) {
-      callback(result, ...args);
-    });
-  }, apiCallCount++ * 1000, word, callback, ...args);
-};
-
-const getExample = function(word, callback, ...args) {
-  setTimeout(function(word, callback, ...args) {
-    unirest("GET", "https://twinword-word-graph-dictionary.p.rapidapi.com/example/?entry=" + word)
-    .header("x-rapidapi-host", "twinword-word-graph-dictionary.p.rapidapi.com")
-    .header("x-rapidapi-key", API_KEY)
-    .end(function(result) {
-      callback(result, ...args);
-    });
-  }, apiCallCount++ * 1000, word, callback, ...args);
-};
 
 const lookUp = function(word, callback) {
   word = word.toLowerCase();
@@ -65,24 +40,17 @@ const lookUp = function(word, callback) {
       let limit = result.headers['x-ratelimit-requests-limit'];
       let wordData = {};
       if (result.status == 200) {
-        console.log(`Getting data was successed! Word: \"${word}\", Limit: ${remaining}/${limit}`);
         wordData = result.body;
-      } else {
-        console.warn(`Getting data was failed! Word: \"${word}\", Limit: ${remaining}/${limit}, MSG: \"${result.body.result_msg}'\"`);
-        if (result.status != 404) {
-          console.error(result);
-          throw result;
-        }
+      } else if (result.status != 404) {
+        console.error(result);
+        throw result;
       }
       getExample(word, function(result) {
         let remaining = result.headers['x-ratelimit-requests-remaining'];
         let limit = result.headers['x-ratelimit-requests-limit'];
         let extraExamples = [];
         if (result.status == 200 && !!result.body && !!result.body.example && result.body.example.length > 0) {
-          console.log(`Getting examples was successed! Word: \"${word}\", Limit: ${remaining}/${limit}`);
           extraExamples = result.body.example;
-        } else {
-          console.warn(`Getting examples was failed! Word: \"${word}\", Limit: ${remaining}/${limit}, MSG: \"${result.body.message}'\"`);
         }
         wordData.extraExamples = extraExamples;
         fs.writeFileSync(jsonPath, JSON.stringify(wordData));
@@ -157,7 +125,7 @@ fs.createReadStream(path.join(process.cwd(), src)).pipe(
         if (translated.length > 0) {
           outputs.push([ word, translated, syllables, pronunciation, details, extraExamples ]);
         } else {
-          getTranslate(word, function(r, err) {
+          weblio(word, function(r, err) {
             outputs.push([ word, r, syllables, pronunciation, details, extraExamples ]);
             if (!err && r.length > 0) {
               console.log(`Getting translated was successed! Word: \"${word}\"`);

@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const csv = require('csv');
-const getTranslate = require('./lib/getTranslate.js');
+const getTranslate = require('./lib/scraping.js').weblio;
 
 const src = process.argv[2];
 const dst = process.argv[3];

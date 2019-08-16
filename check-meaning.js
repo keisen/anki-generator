@@ -37,7 +37,7 @@ fs.createReadStream(path.join(process.cwd(), src)).pipe(
       }
       let word = value[0].trim();
       let translated = value.length > 1 ? value[1].trim() : '';
-      if (!!translated) {
+      if (translated.length > 0) {
         outputs.push([ word, translated ]);
       } else {
         getTranslate(word, function(res, err) {

@@ -41,8 +41,9 @@ fs.createReadStream(path.join(process.cwd(), src)).pipe(
         outputs.push([ word, translated ]);
       } else {
         getTranslate(word, function(res, err) {
-          outputs.push([ word, res ]);
-          if (!err && res.length > 0) {
+          translation = res.translation;
+          outputs.push([ word, translation ]);
+          if (!err && translation.length > 0) {
             console.log(`Getting translated was successed! Word: \"${word}\"`);
           } else {
             console.warn(`Getting translated was failed! Word: \"${word}\"`);

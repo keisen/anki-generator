@@ -1,55 +1,46 @@
 const path = require('path');
 const fs = require('fs');
 const csv = require('csv');
-const getTranslate = require('./lib/scraping.js').weblio;
+const weblio = require('./lib/scraping.js').weblio;
 
 const src = process.argv[2];
 const dst = process.argv[3];
 
-const finalize = function(data, outputs) {
-  setTimeout(function(data, outputs) {
-    if (data.length === outputs.length) {
-      outputs = outputs.map(function(output) {
-        return output.map(function(val) {
-          return val.replace(/\t?\r?\n/g, '').trim();
-        });
-      });
-      csv.stringify(outputs, {delimiter: '\t'}, function(error,output) {
-        fs.writeFileSync(path.join(process.cwd(), dst), output);
-      });
-    } else {
-      finalize(data, outputs);
-    }
-  }, 1000, data, outputs);
+const loadCsvFile = () => {
+  return new Promise((resolve) => {
+    fs.createReadStream(path.join(process.cwd(), src))
+      .pipe(csv.parse({delimiter: '\t', relax_column_count: true},
+                      (err, records) => resolve(records)));
+  });
 };
 
-fs.createReadStream(path.join(process.cwd(), src)).pipe(
-  csv.parse({delimiter: '\t', relax_column_count: true}, function(err, data) {
-    if (!!err) {
-      console.error(err);
-      return;
+const lookUp = async (record) => {
+  let [ word, translated ] = [ record[0], '' ];
+  if (!!word && word.length > 0) {
+    // to lowercase
+    word = word.toLowerCase();
+    // translation by weblio
+    let res = await weblio(word);
+    if (translated.length == 0) {
+      translated = res.translation;
     }
-    console.log(`Starting: Number of data is ${data.length}.`, );
-    const outputs = [];
-    data.forEach(function(value, index, ary) {
-      if (!value || value.length == 0) {
-        console.error(`Error: Loaded invalid record. index: ${index}`);
-      }
-      let word = value[0].trim();
-      let translated = value.length > 1 ? value[1].trim() : '';
-      if (translated.length > 0) {
-        outputs.push([ word, translated ]);
-      } else {
-        getTranslate(word, function(res, err) {
-          translation = res.translation;
-          outputs.push([ word, translation ]);
-          if (!err && translation.length > 0) {
-            console.log(`Getting translated was successed! Word: \"${word}\"`);
-          } else {
-            console.warn(`Getting translated was failed! Word: \"${word}\"`);
-          }
-        });
-      }
-    });
-    finalize(data, outputs);
-  }));
+  }
+  return [ word, translated ].map((val) => val.replace(/\t?\r?\n/g, '').trim());
+};
+
+const writeCsvFile = (records) => {
+  csv.stringify(records, {delimiter: '\t'}, (error, record) => {
+    fs.writeFileSync(path.join(process.cwd(), dst), record);
+  });
+};
+
+(async () => {
+  try {
+    let records = await loadCsvFile();
+    records = records.map(async (record) => await lookUp(record));
+    writeCsvFile(await Promise.all(records));
+  } catch(err) {
+    console.error(err);
+  }
+})();
+

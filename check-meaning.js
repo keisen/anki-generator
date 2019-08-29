@@ -15,22 +15,20 @@ const loadCsvFile = () => {
 };
 
 const lookUp = async (record) => {
-  let [ word, translated ] = [ record[0], '' ];
+  let [ word, translated ] = record;
   if (!!word && word.length > 0) {
     // to lowercase
     word = word.toLowerCase();
     // translation by weblio
     let res = await weblio(word);
-    if (translated.length == 0) {
-      translated = res.translation;
-    }
+    translated = res.translation;
   }
   return [ word, translated ].map((val) => val.replace(/\t?\r?\n/g, '').trim());
 };
 
 const writeCsvFile = (records) => {
-  csv.stringify(records, {delimiter: '\t'}, (error, record) => {
-    fs.writeFileSync(path.join(process.cwd(), dst), record);
+  csv.stringify(records, {delimiter: '\t'}, (error, output) => {
+    fs.writeFileSync(path.join(process.cwd(), dst), output);
   });
 };
 

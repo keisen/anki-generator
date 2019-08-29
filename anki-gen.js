@@ -5,8 +5,8 @@ const iconv = require('iconv');
 const _ = require('underscore');
 const normalize = require("normalize-html-whitespace");
 const weblio = require('./lib/scraping.js').weblio;
-const getWord = require('./lib/webapi.js').words;
-const getExample = require('./lib/webapi.js').twinword;
+const wordsApi = require('./lib/webapi.js').words;
+const twinwordApi = require('./lib/webapi.js').twinword;
 
 const src = process.argv[2];
 const dst = process.argv[3];
@@ -51,7 +51,7 @@ const lookUp = async (record) => {
     }
     // by words
     if (syllables.length == 0 && pronunciation.length == 0 && details.length == 0) {
-      let res = await getWord(word);
+      let res = await wordsApi(word);
       if (res.status == 200 && !!res.body) {
         res = res.body;
         if (!!res.syllables && !!res.syllables.list) {
@@ -78,7 +78,7 @@ const lookUp = async (record) => {
     }
     // by twgd
     if (extraExamples.length == 0) {
-      let res = await getExample(word);
+      let res = await twinwordApi(word);
       if (res.status == 200 && !!res.body && !!res.body.example) {
         extraExamples = normalize(corpusTemplate({examples: res.body.example}));
       }
@@ -86,12 +86,12 @@ const lookUp = async (record) => {
   }
   return [ word, translated, phrases, translatedPhrases,
            syllables, pronunciation, details, extraExamples
-         ].map((val) => val.replace(/\t?\r?\n/g, '').trim());
+         ].map(val => val.replace(/\t?\r?\n/g, '').trim());
 };
 
 const writeCsvFile = (records) => {
-  csv.stringify(records, {delimiter: '\t'}, (error, record) => {
-    fs.writeFileSync(path.join(process.cwd(), dst), record);
+  csv.stringify(records, {delimiter: '\t'}, (error, output) => {
+    fs.writeFileSync(path.join(process.cwd(), dst), output);
   });
 };
 

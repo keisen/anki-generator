@@ -1,3 +1,5 @@
+'use strict';
+
 const path = require('path');
 const fs = require('fs');
 const csv = require('csv');
@@ -26,7 +28,7 @@ const loadCsvFile = () => {
 };
 
 const lookUp = async (record) => {
-  let [ word, translated, phrases, translatedPhrases,
+  let [ word, translation, phrases, translatedPhrases,
         syllables, pronunciation, details, extraExamples ]
     = new Array(8).fill('').map((val, i) => !!record[i] ? record[i] : val)
                            .map((val) => val.trim());
@@ -34,10 +36,10 @@ const lookUp = async (record) => {
     // to lowercase
     word = word.toLowerCase();
     // translation by weblio
-    if (translated.length == 0 || (phrases.length == 0 && translatedPhrases.length == 0)) {
+    if (translation.length == 0 || (phrases.length == 0 && translatedPhrases.length == 0)) {
       let res = await weblio(word);
-      if (translated.length == 0) {
-        translated = res.translation;
+      if (translation.length == 0) {
+        translation = res.translation;
       }
       if (phrases.length == 0 && translatedPhrases.length == 0) {
         let examples = res.examples
@@ -76,7 +78,7 @@ const lookUp = async (record) => {
         }
       }
     }
-    // by twgd
+    // by twinword
     if (extraExamples.length == 0) {
       let res = await twinwordApi(word);
       if (res.status == 200 && !!res.body && !!res.body.example) {
@@ -84,7 +86,7 @@ const lookUp = async (record) => {
       }
     }
   }
-  return [ word, translated, phrases, translatedPhrases,
+  return [ word, translation, phrases, translatedPhrases,
            syllables, pronunciation, details, extraExamples
          ].map(val => val.replace(/\t?\r?\n/g, '').trim());
 };

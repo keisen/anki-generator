@@ -1,3 +1,5 @@
+'use strict';
+
 const path = require('path');
 const fs = require('fs');
 const csv = require('csv');
@@ -15,15 +17,15 @@ const loadCsvFile = () => {
 };
 
 const lookUp = async (record) => {
-  let [ word, translated ] = record;
+  let [ word, translation ] = record;
   if (!!word && word.length > 0) {
     // to lowercase
     word = word.toLowerCase();
     // translation by weblio
     let res = await weblio(word);
-    translated = res.translation;
+    translation = res.translation;
   }
-  return [ word, translated ].map((val) => val.replace(/\t?\r?\n/g, '').trim());
+  return [ word, translation ].map((val) => val.replace(/\t?\r?\n/g, '').trim());
 };
 
 const writeCsvFile = (records) => {

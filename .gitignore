@@ -63,3 +63,5 @@ typings/
 
 cache/
 .python-version
+src.txt
+dst.txt

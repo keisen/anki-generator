@@ -1,11 +1,11 @@
 {
   "name": "anki-generator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "anki-gen.js",
   "scripts": {
-    "check": "node check-meaning.js src.txt src.txt",
-    "gen": "node anki-gen.js src.txt dst.txt"
+    "check": "node check-means.js src.txt src.txt",
+    "gen": "node card-gen.js src.txt dst.txt"
   },
   "repository": {
     "type": "git",
